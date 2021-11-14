@@ -109,7 +109,8 @@ EXTENSION_CATEGORIES = OrderedDict((('phys_device_props2', {'extends': 'VkPhysic
                                    ('phys_device_mem_props2', {'extends': 'VkPhysicalDeviceMemoryProperties2', 'type': 'device'}),
                                    ('phys_device_features2', {'extends': 'VkPhysicalDeviceFeatures2,VkDeviceCreateInfo', 'type': 'device'}),
                                    ('surface_capabilities2', {'extends': 'VkSurfaceCapabilities2KHR', 'type': 'both'}),
-                                   ('format_properties2', {'extends': 'VkFormatProperties2', 'type': 'device'})
+                                   ('format_properties2', {'extends': 'VkFormatProperties2', 'type': 'device'}),
+                                   ('queue_properties2', {'extends': 'VkQueueFamilyProperties2', 'type': 'device'})
                                    ))
 class VulkanInfoGeneratorOptions(GeneratorOptions):
     def __init__(self,
@@ -534,6 +535,11 @@ def PrintStructure(struct, types_to_gen, structure_names, aliases):
             elif (v.arrayLength == str(8) and v.typeID == "uint8_t"):  # VK_LUID_SIZE
                 out += f"    if (obj.deviceLUIDValid)"  # special case
                 out += f" p.PrintKeyString(\"{v.name}\", to_string_8(obj.{v.name}), {str(max_key_len)});\n"
+            elif struct.name == "VkQueueFamilyGlobalPriorityPropertiesEXT" and v.name == "priorities":
+                out += f"    ArrayWrapper arr(p,\"{v.name}\", obj.priorityCount);\n"
+                out += f"    for (uint32_t i = 0; i < obj.priorityCount; i++) {{\n"
+                out += f"        Dump{v.typeID}(p, \"{v.name}\", obj.{v.name}[i]);\n"
+                out += f"    }}\n"
             elif v.arrayLength.isdigit():
                 out += f"    {{   ArrayWrapper arr(p,\"{v.name}\", "+v.arrayLength+");\n"
                 for i in range(0, int(v.arrayLength)):
@@ -686,6 +692,7 @@ def PrintChainIterator(listName, structures, all_structures, checkExtLoc, extTyp
             out += AddGuardFooter(s)
     out += f"        place = structure->pNext;\n"
     out += f"    }}\n"
+    out += f"    p.UnsetSubHeader();\n"
     out += f"}}\n"
     return out
 

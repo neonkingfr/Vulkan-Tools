@@ -1402,6 +1402,7 @@ struct pNextChainInfos {
     std::vector<pNextChainBuildingBlockInfo> phys_device_features2;
     std::vector<pNextChainBuildingBlockInfo> surface_capabilities2;
     std::vector<pNextChainBuildingBlockInfo> format_properties2;
+    std::vector<pNextChainBuildingBlockInfo> queue_properties2;
 };
 
 struct FormatRange {
@@ -1420,12 +1421,12 @@ struct FormatRange {
 struct AppQueueFamilyProperties {
     VkQueueFamilyProperties props;
     uint32_t queue_index;
+    void *pNext = nullptr;  // assumes the lifetime of the pNext chain outlives this object, eg parent object must keep both alive
     bool is_present_platform_agnostic = true;
     VkBool32 platforms_support_present = VK_FALSE;
-
     AppQueueFamilyProperties(AppInstance &inst, VkPhysicalDevice physical_device, VkQueueFamilyProperties family_properties,
-                             uint32_t queue_index)
-        : props(family_properties), queue_index(queue_index) {
+                             uint32_t queue_index, void *pNext = nullptr)
+        : props(family_properties), queue_index(queue_index), pNext(pNext) {
         for (auto &surface_ext : inst.surface_extensions) {
             VkResult err = inst.ext_funcs.vkGetPhysicalDeviceSurfaceSupportKHR(physical_device, queue_index, surface_ext.surface,
                                                                                &surface_ext.supports_present);
@@ -1450,6 +1451,7 @@ struct AppGpu {
     VkPhysicalDeviceProperties2KHR props2{};
 
     std::vector<VkQueueFamilyProperties> queue_props;
+    std::vector<VkQueueFamilyProperties2KHR> queue_props2;
     std::vector<AppQueueFamilyProperties> extended_queue_props;
 
     VkPhysicalDeviceMemoryProperties memory_props{};
@@ -1487,11 +1489,6 @@ struct AppGpu {
         queue_props.resize(queue_count);
         inst.dll.fp_vkGetPhysicalDeviceQueueFamilyProperties(phys_device, &queue_count, queue_props.data());
 
-        int queue_index = 0;
-        for (auto &queue_prop : queue_props) {
-            extended_queue_props.push_back(AppQueueFamilyProperties(inst, phys_device, queue_prop, queue_index++));
-        }
-
         if (inst.CheckExtensionEnabled(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME)) {
             // VkPhysicalDeviceProperties2
             props2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2_KHR;
@@ -1510,6 +1507,29 @@ struct AppGpu {
             buildpNextChain((VkStructureHeader *)&features2, chainInfos.phys_device_features2);
 
             inst.ext_funcs.vkGetPhysicalDeviceFeatures2KHR(phys_device, &features2);
+
+            // std::vector<VkPhysicalDeviceQueueFamilyProperties2>
+            uint32_t queue_prop2_count = 0;
+            inst.ext_funcs.vkGetPhysicalDeviceQueueFamilyProperties2KHR(phys_device, &queue_prop2_count, nullptr);
+            queue_props2.resize(queue_prop2_count);
+            for (size_t i = 0; i < queue_props2.size(); i++) {
+                queue_props2[i].sType = VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2_KHR;
+                buildpNextChain(reinterpret_cast<VkStructureHeader *>(&(queue_props2[i])), chainInfos.queue_properties2);
+            }
+            inst.ext_funcs.vkGetPhysicalDeviceQueueFamilyProperties2KHR(phys_device, &queue_prop2_count, queue_props2.data());
+        }
+
+        // Use the queue_props2 if they exist, else fallback on vulkan 1.0 queue_props
+        int queue_index = 0;
+        if (queue_props2.size() > 0) {
+            for (auto &queue_prop : queue_props2) {
+                extended_queue_props.push_back(
+                    AppQueueFamilyProperties(inst, phys_device, queue_prop.queueFamilyProperties, queue_index++, queue_prop.pNext));
+            }
+        } else {
+            for (auto &queue_prop : queue_props) {
+                extended_queue_props.push_back(AppQueueFamilyProperties(inst, phys_device, queue_prop, queue_index++, nullptr));
+            }
         }
 
         device_extensions = AppGetPhysicalDeviceLayerExtensions(nullptr);
@@ -1654,6 +1674,9 @@ struct AppGpu {
             freepNextChain(static_cast<VkStructureHeader *>(features2.pNext));
             freepNextChain(static_cast<VkStructureHeader *>(props2.pNext));
             freepNextChain(static_cast<VkStructureHeader *>(memory_props2.pNext));
+            for (size_t i = 0; i < queue_props2.size(); i++) {
+                freepNextChain(static_cast<VkStructureHeader *>(queue_props2[i].pNext));
+            }
         }
     }
 

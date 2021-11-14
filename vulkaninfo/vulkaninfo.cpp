@@ -729,13 +729,18 @@ void DumpSummaryGPU(Printer &p, AppGpu &gpu) {
         (gpu.CheckPhysicalDeviceExtensionIncluded(VK_KHR_DRIVER_PROPERTIES_EXTENSION_NAME) || gpu.api_version.minor >= 2)) {
         void *place = gpu.props2.pNext;
         while (place) {
-            struct VkStructureHeader *structure = (struct VkStructureHeader *)place;
+            struct VkStructureHeader *structure = reinterpret_cast<struct VkStructureHeader *>(place);
             if (structure->sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES) {
-                VkPhysicalDeviceDriverProperties *driver_props = (VkPhysicalDeviceDriverProperties *)structure;
+                VkPhysicalDeviceDriverProperties *driver_props = reinterpret_cast<VkPhysicalDeviceDriverProperties *>(structure);
                 DumpVkDriverId(p, "driverID", driver_props->driverID, 18);
                 p.PrintKeyString("driverName", driver_props->driverName, 18);
                 p.PrintKeyString("driverInfo", driver_props->driverInfo, 18);
                 DumpVkConformanceVersion(p, "conformanceVersion", driver_props->conformanceVersion, 18);
+            }
+            if (structure->sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES) {
+                VkPhysicalDeviceIDProperties *device_id_props = reinterpret_cast<VkPhysicalDeviceIDProperties *>(structure);
+                p.PrintKeyString("deviceUUID", to_string_16(device_id_props->deviceUUID), 18);
+                p.PrintKeyString("driverUUID", to_string_16(device_id_props->driverUUID), 18);
             }
             place = structure->pNext;
         }

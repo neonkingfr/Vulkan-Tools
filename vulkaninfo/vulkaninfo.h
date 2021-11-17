@@ -484,8 +484,8 @@ struct pNextChainBuildingBlockInfo {
     uint32_t mem_size;
 };
 
-void buildpNextChain(VkStructureHeader *first, const std::vector<pNextChainBuildingBlockInfo> &chain_info) {
-    VkStructureHeader *place = first;
+void buildpNextChain(void *first, const std::vector<pNextChainBuildingBlockInfo> &chain_info) {
+    VkStructureHeader *place = static_cast<VkStructureHeader *>(first);
 
     for (uint32_t i = 0; i < chain_info.size(); i++) {
         place->pNext = static_cast<VkStructureHeader *>(malloc(chain_info[i].mem_size));
@@ -1237,7 +1237,7 @@ class AppSurface {
 
         if (inst.CheckExtensionEnabled(VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME)) {
             surface_capabilities2_khr.sType = VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_KHR;
-            buildpNextChain((VkStructureHeader *)&surface_capabilities2_khr, sur_extension_pNextChain);
+            buildpNextChain(&surface_capabilities2_khr, sur_extension_pNextChain);
 
             VkPhysicalDeviceSurfaceInfo2KHR surface_info{};
             surface_info.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR;
@@ -1247,7 +1247,7 @@ class AppSurface {
             win32_fullscreen_exclusive_info.sType = VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_WIN32_INFO_EXT;
             win32_fullscreen_exclusive_info.hmonitor = MonitorFromWindow(inst.h_wnd, MONITOR_DEFAULTTOPRIMARY);
 
-            surface_info.pNext = reinterpret_cast<void *>(&win32_fullscreen_exclusive_info);
+            surface_info.pNext = static_cast<void *>(&win32_fullscreen_exclusive_info);
 #endif  // defined(WIN32)
             VkResult err =
                 inst.ext_funcs.vkGetPhysicalDeviceSurfaceCapabilities2KHR(phys_device, &surface_info, &surface_capabilities2_khr);
@@ -1492,19 +1492,19 @@ struct AppGpu {
         if (inst.CheckExtensionEnabled(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME)) {
             // VkPhysicalDeviceProperties2
             props2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2_KHR;
-            buildpNextChain((VkStructureHeader *)&props2, chainInfos.phys_device_props2);
+            buildpNextChain(&props2, chainInfos.phys_device_props2);
 
             inst.ext_funcs.vkGetPhysicalDeviceProperties2KHR(phys_device, &props2);
 
             // VkPhysicalDeviceMemoryProperties2
             memory_props2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2_KHR;
-            buildpNextChain((VkStructureHeader *)&memory_props2, chainInfos.phys_device_mem_props2);
+            buildpNextChain(&memory_props2, chainInfos.phys_device_mem_props2);
 
             inst.ext_funcs.vkGetPhysicalDeviceMemoryProperties2KHR(phys_device, &memory_props2);
 
             // VkPhysicalDeviceFeatures2
             features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR;
-            buildpNextChain((VkStructureHeader *)&features2, chainInfos.phys_device_features2);
+            buildpNextChain(&features2, chainInfos.phys_device_features2);
 
             inst.ext_funcs.vkGetPhysicalDeviceFeatures2KHR(phys_device, &features2);
 
@@ -1514,7 +1514,7 @@ struct AppGpu {
             queue_props2.resize(queue_prop2_count);
             for (size_t i = 0; i < queue_props2.size(); i++) {
                 queue_props2[i].sType = VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2_KHR;
-                buildpNextChain(reinterpret_cast<VkStructureHeader *>(&(queue_props2[i])), chainInfos.queue_properties2);
+                buildpNextChain(&(queue_props2[i]), chainInfos.queue_properties2);
             }
             inst.ext_funcs.vkGetPhysicalDeviceQueueFamilyProperties2KHR(phys_device, &queue_prop2_count, queue_props2.data());
         }

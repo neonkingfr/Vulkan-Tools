@@ -433,9 +433,10 @@ def PrintEnum(enum, gen):
 
 def PrintGetFlagStrings(name, bitmask):
     out = ''
-    out += f"std::vector<const char *>{name}GetStrings({name} value) {{\n"
+    out += f"std::vector<const char *> {name}GetStrings({name} value) {{\n"
     out += f"    std::vector<const char *> strings;\n"
-    out += f"    if (value == 0) {{ strings.push_back(\"None\"); return strings; }}\n"
+    if bitmask.options[0].value != "0":
+        out += f"    if (value == 0) {{ strings.push_back(\"None\"); return strings; }}\n"
     for v in bitmask.options:
         out += f"    if ({v.name} & value) strings.push_back(\"{str(v.name[3:])}\");\n"
     out += f"    return strings;\n}}\n"

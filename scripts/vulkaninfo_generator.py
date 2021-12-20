@@ -105,12 +105,12 @@ predefined_types = ['char', 'VkBool32', 'uint32_t', 'uint8_t', 'int32_t',
                     'float', 'uint64_t', 'size_t', 'VkDeviceSize', 'int64_t']
 
 # Types that need pNext Chains built. 'extends' is the xml tag used in the structextends member. 'type' can be device, instance, or both
-EXTENSION_CATEGORIES = OrderedDict((('phys_device_props2', {'extends': 'VkPhysicalDeviceProperties2', 'type': 'both'}),
-                                   ('phys_device_mem_props2', {'extends': 'VkPhysicalDeviceMemoryProperties2', 'type': 'device'}),
-                                   ('phys_device_features2', {'extends': 'VkPhysicalDeviceFeatures2,VkDeviceCreateInfo', 'type': 'device'}),
-                                   ('surface_capabilities2', {'extends': 'VkSurfaceCapabilities2KHR', 'type': 'both'}),
-                                   ('format_properties2', {'extends': 'VkFormatProperties2', 'type': 'device'}),
-                                   ('queue_properties2', {'extends': 'VkQueueFamilyProperties2', 'type': 'device'})
+EXTENSION_CATEGORIES = OrderedDict((('phys_device_props2', {'extends': 'VkPhysicalDeviceProperties2', 'type': 'both', 'print_iterator': True}),
+                                   ('phys_device_mem_props2', {'extends': 'VkPhysicalDeviceMemoryProperties2', 'type': 'device', 'print_iterator': False}),
+                                   ('phys_device_features2', {'extends': 'VkPhysicalDeviceFeatures2,VkDeviceCreateInfo', 'type': 'device', 'print_iterator': True}),
+                                   ('surface_capabilities2', {'extends': 'VkSurfaceCapabilities2KHR', 'type': 'both', 'print_iterator': True}),
+                                   ('format_properties2', {'extends': 'VkFormatProperties2', 'type': 'device', 'print_iterator': True}),
+                                   ('queue_properties2', {'extends': 'VkQueueFamilyProperties2', 'type': 'device', 'print_iterator': True})
                                    ))
 class VulkanInfoGeneratorOptions(GeneratorOptions):
     def __init__(self,
@@ -299,7 +299,8 @@ class VulkanInfoGenerator(OutputGenerator):
         out += "    return infos;\n}\n"
 
         for key, value in EXTENSION_CATEGORIES.items():
-            out += PrintChainIterator(key,
+            if value.get('print_iterator'):
+                out += PrintChainIterator(key,
                                       self.extension_sets[key], self.all_structures, value.get('type'), self.extTypes, self.aliases, self.vulkan_versions)
 
         for s in (x for x in self.all_structures if x.name in structs_to_comp):

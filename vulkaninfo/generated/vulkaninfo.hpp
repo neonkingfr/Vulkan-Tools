@@ -2887,19 +2887,6 @@ void chain_iterator_phys_device_props2(Printer &p, AppInstance &inst, AppGpu &gp
         place = structure->pNext;
     }
 }
-void chain_iterator_phys_device_mem_props2(Printer &p, AppGpu &gpu, void * place) {
-    while (place) {
-        struct VkStructureHeader *structure = (struct VkStructureHeader *)place;
-        p.SetSubHeader();
-        if (structure->sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT && 
-           (gpu.CheckPhysicalDeviceExtensionIncluded(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME))) {
-            VkPhysicalDeviceMemoryBudgetPropertiesEXT* props = (VkPhysicalDeviceMemoryBudgetPropertiesEXT*)structure;
-            DumpVkPhysicalDeviceMemoryBudgetPropertiesEXT(p, "VkPhysicalDeviceMemoryBudgetPropertiesEXT", *props);
-            p.AddNewline();
-        }
-        place = structure->pNext;
-    }
-}
 void chain_iterator_phys_device_features2(Printer &p, AppGpu &gpu, void * place) {
     while (place) {
         struct VkStructureHeader *structure = (struct VkStructureHeader *)place;
